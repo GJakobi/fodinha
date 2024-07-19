@@ -14,6 +14,6 @@ class Card:
     def __lt__(self, other):
         return self.ranks.index(self.rank) < self.ranks.index(other.rank)
 
-    def set_gato(cls, rank):
-        index = cls.ranks.index(rank)
-        cls.ranks = cls.ranks[index + 1:] + cls.ranks[:index + 1]
+    def set_gato(cls, gato_index):
+        cls.ranks.append(cls.ranks.pop(gato_index))
+        print(cls.ranks)

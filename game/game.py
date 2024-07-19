@@ -5,7 +5,6 @@ from .shuffler import Shuffler
 from .card import Card
 from .player import Player
 
-
 def distribuir_cartas(sock, shuffler, jogadores, num_cartas):
     shuffler.shuffle()
 
@@ -27,7 +26,9 @@ def distribuir_cartas(sock, shuffler, jogadores, num_cartas):
 
     vira = shuffler.draw()
     print(f"A carta vira é: {vira}")
-    Card.set_gato(Card, vira.rank)
+    gato_index = Card.ranks.index(vira.rank) + 1
+    print(f"O gato está na posição {gato_index}")
+    Card.set_gato(Card, gato_index)
 
 
 def enviar_mensagem_inicial(sock, proximoJogador):
