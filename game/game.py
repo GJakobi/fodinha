@@ -1,11 +1,11 @@
 import socket
-import time
 import json
 from .shuffler import Shuffler
 from .card import Card
 from .player import Player
 
 def distribuir_cartas(sock, shuffler, jogadores, num_cartas):
+    print("\nIniciando distribuição de cartas...")
     shuffler.shuffle()
 
     for _ in range(num_cartas):
@@ -17,35 +17,35 @@ def distribuir_cartas(sock, shuffler, jogadores, num_cartas):
                 "carta": str(carta),
                 "destino": jogador.name
             }
+            print(f"\nEnviando carta {carta} para {jogador.name}")
             sock.sendto(json.dumps(pacote).encode(), jogador.address)
-            data, addr = sock.recvfrom(1024)
-            pacote = json.loads(data.decode())
-            print(f"Carta {carta} entregue ao jogador {addr}")
-
+            if jogador != shuffler.jogador:
+                data, addr = sock.recvfrom(1024)
+                pacote = json.loads(data.decode())
+                print(f"Carta {carta} entregue ao jogador {addr}")
             print(jogador.hand)
 
+    carta_vira(sock, jogadores, shuffler)
+
+def carta_vira(sock, jogadores, shuffler):
     vira = shuffler.draw()
-    print(f"A carta vira é: {vira}")
-    gato_index = Card.ranks.index(vira.rank) + 1
-    print(f"O gato está na posição {gato_index}")
+    print(f"\nA carta vira é: {vira}")
+    
+    if vira.rank == "3":
+        gato_index = 0
+    else:
+        gato_index = Card.ranks.index(vira.rank) + 1
+
     Card.set_gato(Card, gato_index)
 
-
-def enviar_mensagem_inicial(sock, proximoJogador):
-    carta = input("Digite a carta a ser jogada: ")
-    sent = False
     pacote = {
-        "estado": "Jogando",
-        "carta": carta,
-        "destino": proximoJogador.name
+        "estado": "Vira",
+        "carta" : str(vira)
     }
-    while not sent:
-        try:
-            # enviar o pacote, com a carta e o destino via JSON
-            sock.sendto(json.dumps(pacote).encode(), proximoJogador.address)
-            sent = True
-        except socket.error:
-            time.sleep(1)
+
+    for jogador in jogadores:
+        sock.sendto(json.dumps(pacote).encode(), jogador.address)
+        print(f"Enviando carta vira {vira} para {jogador.name}")
 
 
 def main():
@@ -62,41 +62,51 @@ def main():
 
     jogadores = [
         Player("Jogador1", addr1),
-        Player("Jogador2", (host, porta2))
+        Player("Jogador2", (host, porta2)),
     ]
 
-    proximoJogador = jogadores[1]  # O próximo jogador para começar é o segundo na lista
+    shuffler = Shuffler(jogadores[0])
 
-    # Inicializar o shuffler e embaralhar o baralho uma vez
-    shuffler = Shuffler()
-
-    # Distribuir as cartas inicialmente
-    distribuir_cartas(sock, shuffler, jogadores, 3)
-
-    # Enviar uma mensagem inicial para o próximo jogador se for o jogador 1
     if porta1 == 5001:
-        enviar_mensagem_inicial(sock, proximoJogador)
+        print(f"Enviando handshake para {jogadores[1].address}")
+        sock.sendto(json.dumps({"estado": "Handshake"}).encode(), jogadores[1].address)
 
-    # Loop principal
-    while True:
+
+        data, addr = sock.recvfrom(1024)
+        pacote = json.loads(data.decode())
+        if pacote.get("estado") == "Handshake":
+            print(f"Conexão estabelecida com {addr}")
+
+            distribuir_cartas(sock, shuffler, jogadores, 3)
+    else:
+        print(f"Aguardando handshake na porta {porta1}")
         data, addr = sock.recvfrom(1024)
         pacote = json.loads(data.decode())
 
-        # printar carta recebida
-        print("Carta recebida: ", pacote["carta"])
+        if pacote.get("estado") == "Handshake":
+            print(f"Conexão estabelecida com {addr}")
 
-        if pacote["estado"] == "Encerrar":
+            sock.sendto(json.dumps({"estado": "Handshake"}).encode(), addr)
+
+
+    # Loop principal
+    while True:
+        print("Aguardando mensagem...")
+        data, addr = sock.recvfrom(1024)
+        pacote = json.loads(data.decode())
+
+        if pacote["estado"] == "Dando Carta":
+            print("Carta recebida: ", pacote["carta"])
+
+        elif pacote["estado"] == "Vira":
+            print("A carta vira é: ", pacote["carta"])
+
+        elif pacote["estado"] == "Encerrar":
+            print("Encerrando conexão...")
+
             break
 
-        # Enviar a mensagem de volta para o próximo jogador
-        carta = input("Digite a carta: ")
-        pacote["carta"] = carta
-        proximoJogador = jogadores[(jogadores.index(proximoJogador) + 1) % 2]  # Próximo jogador na lista circular
-        pacote["destino"] = proximoJogador.name
-        sock.sendto(json.dumps(pacote).encode(), proximoJogador.address)
-
     sock.close()
-
 
 if __name__ == "__main__":
     main()

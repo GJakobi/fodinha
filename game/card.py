@@ -1,4 +1,3 @@
-
 class Card:
     suits = ['Hearts', 'Coins', 'Clubs', 'Spades']
     ranks = ['4', '5', '6', '7', '8', '9', '10',

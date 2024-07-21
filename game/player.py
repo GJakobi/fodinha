@@ -3,6 +3,7 @@ class Player:
         self.name = name
         self.address = address
         self.hand = []
+        self.aposta = 0
 
     def receive_card(self, card):
         self.hand.append(card)
@@ -14,4 +15,4 @@ class Player:
         return [str(card) for card in self.hand]
 
     def __repr__(self):
-        return f"Player({self.name}, Hand: {self.show_hand()})"
+        return f"player({self.name}, hand: {self.show_hand()})"

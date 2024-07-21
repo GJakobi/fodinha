@@ -3,8 +3,10 @@ from .card import Card
 
 
 class Shuffler:
-    def __init__(self):
+
+    def __init__(self, jogador):
         self.deck = [Card(suit, rank) for suit in Card.suits for rank in Card.ranks]
+        self.jogador = jogador
 
     def shuffle(self):
         random.shuffle(self.deck)
