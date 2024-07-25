@@ -1,12 +1,12 @@
 class Player:
-    def __init__(self, name, address):
+    def __init__(self, name):
         self.name = name
-        self.address = address
         self.hand = []
         self.aposta = 0
+        self.lifes = 12
 
-    def receive_card(self, card):
-        self.hand.append(card)
+    def receive_hand(self, hand):
+        self.hand = hand
 
     def play_card(self):
         return self.hand.pop(0) if self.hand else None
