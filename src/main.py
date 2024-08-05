@@ -77,13 +77,14 @@ def main():
         if pacote["state"] == "DEALING":
             if has_bastao == True:
                 print("Agora é a hora de fazer as apostas")
-                my_player.askBet()
+                my_player.ask_bet()
                 message = json.dumps({"state": "BETTING", "bets": [{"player": my_player.name, "bet": my_player.bet}]})
                 sock.sendto(message.encode(), (host, next_player_port))
                 continue
             
             
             my_hand = next(player_info["hand"] for player_info in pacote["hands"] if player_info["player"] == int(my_player.name))
+            my_hand = [Card.from_string(card_str) for card_str in my_hand]
             my_player.receive_hand(my_hand)
             
             print(f"Minha mão: {my_player.show_hand()}")
@@ -91,13 +92,15 @@ def main():
             
         if pacote["state"] == "BETTING":
             if has_bastao == True:
-                print("Todos apostaram")
+                print("Apostas dos jogadores:")
                 message = json.dumps({"state": "INFORMATION", "bets": pacote["bets"]})
+                bets = pacote["bets"]
+                print(bets)
                 sock.sendto(message.encode(), (host, next_player_port))
                 continue
             
             print("Agora é a hora de fazer as apostas")
-            my_player.askBet()
+            my_player.ask_bet()
             bets = pacote["bets"]
             bets.append({"player": my_player.name, "bet": my_player.bet})
             message = json.dumps({"state": "BETTING", "bets": bets})
@@ -105,9 +108,11 @@ def main():
             
         if pacote["state"] == "INFORMATION":
             if has_bastao == True:
-                print("Apostas de outros jogadores:")
-                bets = pacote["bets"]
-                print(bets)
+                print("Hora de jogar:")
+                card_played = my_player.ask_play()
+                print(f"Carta jogada: {card_played}")
+                message = json.dumps({"state": "PLAYING", "cards": [{"player": my_player.name, "card": str(card_played)}]})
+                sock.sendto(message.encode(), (host, next_player_port))
                 continue
             
             print("Apostas dos jogadores:")
@@ -124,8 +129,14 @@ def main():
                 #TODO: se é a ultima carta, invés de jogar pro result, joga pro end of round
                 continue
             
-            print("Cartas jogadas:")
-            #TODO: Mensagem da volta pelo anel, cada jogador que recebe a mensagem deve mostrar as cartas já jogadas, decidir qual carta jogar, adicionar carta na mensagem e reenviar a mensagem
+            cards_played = pacote["cards"]
+            print(f"Cartas jogadas: {cards_played}")
+            card_played = my_player.ask_play()
+            print(f"Carta jogada: {card_played}")
+            cards_played.append({"player": my_player.name, "card": str(card_played)})
+            message = json.dumps({"state": "PLAYING", "cards": cards_played})
+            sock.sendto(message.encode(), (host, next_player_port))
+            
 
         if pacote["state"] == "RESULT":
             if has_bastao == True:
