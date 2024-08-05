@@ -22,6 +22,22 @@ import sys
 NUM_OF_PLAYERS = 4
 BASTAO = "BASTAO"
 
+def upsert_bet(bets, player, bet):
+    for i in range(len(bets)):
+        if bets[i]["player"] == player:
+            bets[i]["bet"] = bet
+            return bets
+    bets.append({"player": player, "bet": bet})
+    return bets
+
+def upsert_card(cards, player, card):
+    for i in range(len(cards)):
+        if cards[i]["player"] == player:
+            cards[i]["card"] = card
+            return cards
+    cards.append({"player": player, "card": card, "wins": 0})
+    return cards
+
 def main():    
     if(len(sys.argv) < 2):
         print("args missing")
@@ -91,7 +107,7 @@ def main():
             if has_bastao == True:
                 my_player.ask_bet()
                 bets = pacote["bets"]
-                bets.append({"player": my_player.name, "bet": my_player.bet})
+                bets = upsert_bet(bets, my_player.name, my_player.bet)
                 message = json.dumps({"state": "BETS_INFORMATION", "bets": bets})
                 sock.sendto(message.encode(), (host, next_player_port))
                 continue
@@ -99,7 +115,7 @@ def main():
             print("Agora é a hora de fazer as apostas")
             my_player.ask_bet()
             bets = pacote["bets"]
-            bets.append({"player": my_player.name, "bet": my_player.bet})
+            bets = upsert_bet(bets, my_player.name, my_player.bet)
             message = json.dumps({"state": "BETTING", "bets": bets})
             sock.sendto(message.encode(), (host, next_player_port))
             
@@ -116,70 +132,71 @@ def main():
             
         if pacote["state"] == "PLAYING":
             cards_played = pacote["cards"]
-            print(f"Cartas jogadas: {cards_played}")
+            
+            if len(cards_played) > 0:
+                print(f"Cartas jogadas: {cards_played}")
+                
             card_played = my_player.ask_play()
             print(f"Carta jogada: {card_played}")
-            if has_bastao == True:
-                all_bets = pacote["cards"]
-                all_bets.append({"player": my_player.name, "card": str(card_played), "wins": 0})
+            
+            if has_bastao == True:                
+                cards_played = upsert_card(cards_played, my_player.name, str(card_played))
                 
                 print("Agora é a hora de computar os resultados")
-                #TODO: computar o reusltado enviar pacote mostrando o resultado da rodada
-                # transform the cards from string to Card objects
                 all_cards = []
-                for card_info in all_bets:
+                for card_info in cards_played:
                     player = card_info["player"]
                     card = Card.from_string(card_info["card"])
                     all_cards.append((player, card))
                     
-                # sort the cards by calculate_value of card class
                 all_cards.sort(key=lambda x: x[1].calculate_value())
-                print(all_cards)
+                                
+                player_won = all_cards[-1][0]      
                 
-                player_won = all_cards[-1][0]
+                #increment number of wins of the player that won the round
+                for card_info in cards_played:
+                    if card_info["player"] == player_won:
+                        card_info["wins"] += 1          
                 
-                print(f"Jogador {player_won} ganhou a rodada")
+                if len(my_player.hand) == 0:
+                    message = json.dumps({"state": "END_OF_ROUND", "result": cards_played})
+                    sock.sendto(message.encode(), (host, next_player_port))
+                    continue
                 
-                print(f"Minha mao: {my_player.show_hand()}")
-
-                
-                # if len(my_player.hand) == 0:
-                #     message = json.dumps({"state": "END_OF_ROUND"})
-                #     sock.sendto(message.encode(), (host, next_player_port))
-                #     continue
-                
-                # #create array with the bets of each player and the number of wins of each player
-                # #increment number of wins of the player that won the round
-                # for card_info in all_bets:
-                #     if card_info["player"] == player_won:
-                #         card_info["wins"] += 1
-                        
-                # message = json.dumps({"state": "PLAYING", "cards": all_bets})
-                # sock.sendto(message.encode(), (host, next_player_port))
+                message = json.dumps({"state": "RESULT", "result": cards_played, "last_win": player_won})
+                sock.sendto(message.encode(), (host, next_player_port))
                 continue
             
-            cards_played.append({"player": my_player.name, "card": str(card_played), "wins": 0})
+            cards_played = upsert_card(cards_played, my_player.name, str(card_played))
             message = json.dumps({"state": "PLAYING", "cards": cards_played})
             sock.sendto(message.encode(), (host, next_player_port))
             
 
         if pacote["state"] == "RESULT":
+            result = pacote["last_win"]
+            print(f"Resultado da rodada: Jogador {result} ganhou")
             if has_bastao == True:
                 print("Agora é a hora de começar a próxima rodada")
-                continue
-            
-            result = pacote["result"]
-            
+                bets = pacote["result"]
+                message = json.dumps({"state": "PLAYING", "cards": bets})
+                sock.sendto(message.encode(), (host, next_player_port))
+                continue            
+            sock.sendto(data, (host, next_player_port))
         
         if pacote["state"] == "END_OF_ROUND":
+            print("Resultado da rodada:")
+            print(pacote["result"])
+            
+            #
+            
             if has_bastao == True:
                 # começar novo jogo, passar o bastao pra frente
-                print("alo")
+                print("Fim da rodada")
+                has_bastao = False
+                message = json.dumps({"state": "DEALING"})
                 
                 continue
-            
-            print("Resultado da rodada:")
-            # informar todos os jogadores sobre a nova pontuação
+            sock.sendto(data, (host, next_player_port))
 
     sock.close()
 
