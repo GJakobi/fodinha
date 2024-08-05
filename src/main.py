@@ -71,7 +71,6 @@ def main():
       
     
     while True:
-        print("Aguardando mensagem...")
         data, addr = sock.recvfrom(1024)
         pacote = json.loads(data.decode())
         
@@ -92,9 +91,9 @@ def main():
             
         if pacote["state"] == "BETTING":
             if has_bastao == True:
-                # todos apostaram, manda as apostas para todo mundo
                 print("Todos apostaram")
-                #TODO: criar um pacote com as apostas, e enviar para todo mundo saber as apostas dos outros
+                message = json.dumps({"state": "INFORMATION", "bets": pacote["bets"]})
+                sock.sendto(message.encode(), (host, next_player_port))
                 continue
             
             print("Agora é a hora de fazer as apostas")
@@ -106,12 +105,16 @@ def main():
             
         if pacote["state"] == "INFORMATION":
             if has_bastao == True:
-                print("Agora é a hora de jogar")
+                print("Apostas de outros jogadores:")
+                bets = pacote["bets"]
+                print(bets)
                 continue
             
-            
             print("Apostas dos jogadores:")
-            #TODO: mostrar todas as apostas recebidas no pacote
+            bets = pacote["bets"]
+            print(bets)
+            #TODO: mostrar bonitinho
+            sock.sendto(data, (host, next_player_port))
             
         if pacote["state"] == "PLAYING":
             if has_bastao == True:
