@@ -61,6 +61,8 @@ def main():
             players.append(player)
             
         my_player.receive_hand(hands[0])
+        
+        print(f"Minha mão: {my_player.show_hand()}")
             
         # enviamos todas as cartas em uma mesma mensagem
         message = json.dumps({"state": "DEALING" ,"hands":[{"player": player.name, "hand": player.show_hand()} for player in players]})  
@@ -79,7 +81,7 @@ def main():
                 my_player.askBet()
                 message = json.dumps({"state": "BETTING", "bets": [{"player": my_player.name, "bet": my_player.bet}]})
                 sock.sendto(message.encode(), (host, next_player_port))
-                return
+                continue
             
             
             my_hand = next(player_info["hand"] for player_info in pacote["hands"] if player_info["player"] == int(my_player.name))
@@ -93,14 +95,19 @@ def main():
                 # todos apostaram, manda as apostas para todo mundo
                 print("Todos apostaram")
                 #TODO: criar um pacote com as apostas, e enviar para todo mundo saber as apostas dos outros
+                continue
             
             print("Agora é a hora de fazer as apostas")
-            #TODO: pegar as maos existentes no "pacote", concatenar com a minha e enviar para o próximo
             my_player.askBet()
+            bets = pacote["bets"]
+            bets.append({"player": my_player.name, "bet": my_player.bet})
+            message = json.dumps({"state": "BETTING", "bets": bets})
+            sock.sendto(message.encode(), (host, next_player_port))
             
         if pacote["state"] == "INFORMATION":
             if has_bastao == True:
                 print("Agora é a hora de jogar")
+                continue
             
             
             print("Apostas dos jogadores:")
@@ -112,6 +119,7 @@ def main():
                 #TODO: computar o reusltado enviar pacote mostrando o resultado da rodada
                 
                 #TODO: se é a ultima carta, invés de jogar pro result, joga pro end of round
+                continue
             
             print("Cartas jogadas:")
             #TODO: Mensagem da volta pelo anel, cada jogador que recebe a mensagem deve mostrar as cartas já jogadas, decidir qual carta jogar, adicionar carta na mensagem e reenviar a mensagem
@@ -119,6 +127,7 @@ def main():
         if pacote["state"] == "RESULT":
             if has_bastao == True:
                 print("Agora é a hora de começar a próxima rodada")
+                continue
             
             #TODO: atualizar a pontuação de cada jogador
         
@@ -126,6 +135,8 @@ def main():
             if has_bastao == True:
                 # começar novo jogo, passar o bastao pra frente
                 print("alo")
+                
+                continue
             
             print("Resultado da rodada:")
             # informar todos os jogadores sobre a nova pontuação
