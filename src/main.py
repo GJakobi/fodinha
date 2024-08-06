@@ -45,7 +45,7 @@ def main():
         return
 
     host = "localhost"
-    sock = setup_socket(self_port)
+    sock = setup_socket(self_port, host)
     
     my_player = Player(get_player_name())
     
@@ -137,7 +137,6 @@ def main():
             if my_player.is_alive() == False:
                 print("Você perdeu todas as vidas")
                 sock.sendto(data, (host, next_player_port))
-                sock.close()
                 continue
             
             bets = pacote["bets"]
