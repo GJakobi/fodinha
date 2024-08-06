@@ -19,7 +19,7 @@ import sys
 #     Informar os jogadores sobre a nova pontuação
 #     Passar o bastão para a frente, para que o próximo jogador seja o carteador
 
-NUM_OF_PLAYERS = 4
+NUM_OF_PLAYERS = 2
 BASTAO = "BASTAO"
 
 def upsert_bet(bets, player, bet):
@@ -37,6 +37,20 @@ def upsert_card(cards, player, card):
             return cards
     cards.append({"player": player, "card": card, "wins": 0})
     return cards
+
+def deal_cards(players):
+    deck = Deck()
+    deck.shuffle()
+    hands = deck.draw_hands(NUM_OF_PLAYERS)
+    virada = deck.draw()
+    
+    for i in range(NUM_OF_PLAYERS):
+        player = Player(i)
+        player.hand = hands[i]
+        players.append(player)
+    
+    return hands, virada
+    
 
 def main():    
     if(len(sys.argv) < 2):
@@ -57,24 +71,16 @@ def main():
     
     my_player = Player(sys.argv[1])
     
-    has_bastao = is_dealer = False
+    has_bastao = False
     if(int(my_player.name) == 0):
-        has_bastao = is_dealer = True
+        has_bastao = True
         
     players = []
-    
-    if is_dealer:
+    if has_bastao:
         print("Sou o dealer")
-        deck = Deck()
-        deck.shuffle()
-        hands = deck.draw_hands(NUM_OF_PLAYERS)
-        virada = deck.draw()
+        hands, virada = deal_cards(players)
         print(f"Virada: {virada}")
         #TODO: colocar o gato
-        for i in range(NUM_OF_PLAYERS):
-            player = Player(i)
-            player.hand = hands[i]
-            players.append(player)
             
         my_player.receive_hand(hands[0])
         
@@ -91,10 +97,28 @@ def main():
         pacote = json.loads(data.decode())
         
         if pacote["state"] == "DEALING":
+            if "token" in pacote:
+                has_bastao = True
+            
             if has_bastao == True:
-                message = json.dumps({"state": "BETTING", "bets": []})
-                sock.sendto(message.encode(), (host, next_player_port))
+                # se o pacote ja tem as mãos, entao ja foi distribuida as cartas
+                if "hands" in pacote:
+                    message = json.dumps({"state": "BETTING", "bets": []})
+                    sock.sendto(message.encode(), (host, next_player_port))     
+                # se não, distribui as cartas             
+                else:               
+                    hands, virada = deal_cards(players)
+                    print(f"Virada: {virada}")
+                    
+                    my_player.receive_hand(hands[0])
+                    
+                    print(f"Minha mão: {my_player.show_hand()}")
+                    
+                    message = json.dumps({"state": "DEALING" ,"hands":[{"player": player.name, "hand": player.show_hand()} for player in players]})
+                    
+                    sock.sendto(message.encode(), (host, next_player_port))
                 continue
+            
         
             my_hand = next(player_info["hand"] for player_info in pacote["hands"] if player_info["player"] == int(my_player.name))
             my_hand = [Card.from_string(card_str) for card_str in my_hand]
@@ -177,8 +201,8 @@ def main():
             print(f"Resultado da rodada: Jogador {result} ganhou")
             if has_bastao == True:
                 print("Agora é a hora de começar a próxima rodada")
-                bets = pacote["result"]
-                message = json.dumps({"state": "PLAYING", "cards": bets})
+                cards_played = pacote["result"]
+                message = json.dumps({"state": "PLAYING", "cards": cards_played})
                 sock.sendto(message.encode(), (host, next_player_port))
                 continue            
             sock.sendto(data, (host, next_player_port))
@@ -187,14 +211,24 @@ def main():
             print("Resultado da rodada:")
             print(pacote["result"])
             
-            #
+            # subtract the number of lifes, it's the difference between the bets and the number of wins
+            my_bet = my_player.bet
+            my_wins = next(card_info["wins"] for card_info in pacote["result"] if card_info["player"] == my_player.name)
+            my_player.lives -= my_bet - my_wins
+        
+            print(f"Minhas vidas: {my_player.lives}")
             
+            #reset everything
+            my_player.bet = 0
+            my_player.hand = []
+                        
             if has_bastao == True:
                 # começar novo jogo, passar o bastao pra frente
                 print("Fim da rodada")
                 has_bastao = False
-                message = json.dumps({"state": "DEALING"})
                 
+                message = json.dumps({"state": "DEALING", "token": BASTAO})
+                sock.sendto(message.encode(), (host, next_player_port))
                 continue
             sock.sendto(data, (host, next_player_port))
 
