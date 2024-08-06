@@ -99,6 +99,9 @@ def main():
         
         if pacote["state"] == "DEALING":
             if "token" in pacote:
+                if my_player.is_alive() == False:
+                    sock.sendto(data, (host, next_player_port))
+                    continue
                 has_bastao = True
             
             if has_bastao == True:
@@ -107,7 +110,8 @@ def main():
                     message = json.dumps({"state": "BETTING", "bets": []})
                     sock.sendto(message.encode(), (host, next_player_port))     
                 # se não, distribui as cartas             
-                else:               
+                else:          
+                    players = []    
                     hands, virada = deal_cards(players)
                     print(f"Virada: {virada}")
                     
@@ -121,6 +125,10 @@ def main():
                 continue
             
         
+            if my_player.is_alive() == False:
+                sock.sendto(data, (host, next_player_port))
+                continue
+        
             my_hand = next(player_info["hand"] for player_info in pacote["hands"] if player_info["player"] == int(my_player.name))
             my_hand = [Card.from_string(card_str) for card_str in my_hand]
             my_player.receive_hand(my_hand)
@@ -129,6 +137,10 @@ def main():
             sock.sendto(data, (host, next_player_port))
             
         if pacote["state"] == "BETTING":
+            if my_player.is_alive() == False:
+                sock.sendto(data, (host, next_player_port))
+                continue
+            
             if has_bastao == True:
                 my_player.ask_bet()
                 bets = pacote["bets"]
@@ -145,8 +157,20 @@ def main():
             sock.sendto(message.encode(), (host, next_player_port))
             
         if pacote["state"] == "BETS_INFORMATION":
-            print("Apostas dos jogadores:")
+            if my_player.is_alive() == False:
+                print("Você perdeu todas as vidas")
+                sock.sendto(data, (host, next_player_port))
+                sock.close()
+                continue
+            
             bets = pacote["bets"]
+            
+            if len(bets) == 1:
+                print("Você venceu!")
+                sock.close()
+                return
+
+            print("Apostas dos jogadores:")
             #TODO: mostrar bonitinho
             print(bets)
             if has_bastao == True:
@@ -156,6 +180,11 @@ def main():
             sock.sendto(data, (host, next_player_port))
             
         if pacote["state"] == "PLAYING":
+            if my_player.is_alive() == False:
+                print("Você perdeu todas as vidas")
+                sock.sendto(data, (host, next_player_port))
+                continue
+
             cards_played = pacote["cards"]
             
             if len(cards_played) > 0:
@@ -212,6 +241,10 @@ def main():
             print("Resultado da rodada:")
             print(pacote["result"])
             
+            if my_player.is_alive() == False:
+                sock.sendto(data, (host, next_player_port))
+                continue
+            
             # subtract the number of lifes, it's the difference between the bets and the number of wins
             my_bet = my_player.bet
             my_wins = next(card_info["wins"] for card_info in pacote["result"] if card_info["player"] == my_player.name)
@@ -234,7 +267,6 @@ def main():
                 continue
             sock.sendto(data, (host, next_player_port))
 
-    sock.close()
 
 if __name__ == "__main__":
     main()

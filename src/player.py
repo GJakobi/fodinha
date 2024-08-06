@@ -3,7 +3,7 @@ class Player:
         self.name = name
         self.hand = []
         self.bet = 0
-        self.lives = 12
+        self.lives = 1
 
     def receive_hand(self, hand):
         self.hand = hand
@@ -21,6 +21,9 @@ class Player:
             if card.suit == suit and card.rank == rank:
                 return card
         return None 
+    
+    def is_alive(self):
+        return self.lives > 0
     
     def ask_play(self):
         print(f"Minha mão: {self.show_hand()}")
