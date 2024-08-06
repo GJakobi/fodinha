@@ -1,23 +1,9 @@
-import socket
 import json
 from .deck import Deck
 from .card import Card
 from .player import Player
-import sys
-
-# Em cada mão do jogo
-
-#     Carteador deve sortear as cartas e enviar para cada jogador as suas cartas
-#     As cartas podem ser enviadas todas em uma mesma mensagem ou uma mensagem para cada jogador
-#     Depois das cartas, cada jogador deve fazer as suas apostas (uma mensagem da a volta pelo anel completando as apostas)
-#     Nova mensagem da a volta pelo anel informando e atualizando as apostas de cada jogador na tela
-#     Depois das apostas, começa-se o jogo. 
-#     Mensagem da volta pelo anel, cada jogador que recebe a mensagem deve mostrar as cartas já jogadas, decidir qual carta jogar, adicionar carta na mensagem e reenviar a mensagem
-#     Depois da mensagem dar a volta no anel, o carteador deve computar o resultado da rodada, e enviar o resultado para todos os jogadores
-#     Depois deve começar a próxima rodada
-#     Ao terminar as cartas de cada mão. O carteador deve computar o resultado geral e a pontuação de cada jogador. 
-#     Informar os jogadores sobre a nova pontuação
-#     Passar o bastão para a frente, para que o próximo jogador seja o carteador
+from .network import setup_socket
+from .utils import get_player_name, get_ports
 
 NUM_OF_PLAYERS = 2
 BASTAO = "BASTAO"
@@ -54,23 +40,14 @@ def deal_cards(players):
     
 
 def main():    
-    if(len(sys.argv) < 2):
-        print("args missing")
+    self_port, next_player_port = get_ports()
+    if self_port is None or next_player_port is None:
         return
-    
-    self_port = int(input("Digite a porta: "))
-    next_player_port = int(input("Digite a porta do próximo: "))
 
-
-    # Configurações
-    host = 'localhost'
+    host = "localhost"
+    sock = setup_socket(self_port)
     
-    # Criação do socket UDP
-    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    addr = (host, self_port)
-    sock.bind(addr)
-    
-    my_player = Player(sys.argv[1])
+    my_player = Player(get_player_name())
     
     has_bastao = False
     if(int(my_player.name) == 0):
