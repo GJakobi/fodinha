@@ -43,6 +43,7 @@ def deal_cards(players):
     deck.shuffle()
     hands = deck.draw_hands(NUM_OF_PLAYERS)
     virada = deck.draw()
+    Card.set_gato(virada)
     
     for i in range(NUM_OF_PLAYERS):
         player = Player(i)
@@ -214,11 +215,12 @@ def main():
             # subtract the number of lifes, it's the difference between the bets and the number of wins
             my_bet = my_player.bet
             my_wins = next(card_info["wins"] for card_info in pacote["result"] if card_info["player"] == my_player.name)
-            my_player.lives -= my_bet - my_wins
+            my_player.lives -= abs(my_bet - my_wins)
         
             print(f"Minhas vidas: {my_player.lives}")
             
             #reset everything
+            Card.reset_gato()
             my_player.bet = 0
             my_player.hand = []
                         
