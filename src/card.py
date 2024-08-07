@@ -1,5 +1,5 @@
 class Card:
-    suits = ['Hearts', 'Diamonds', 'Clubs', 'Spades']
+    suits = ['Diamonds', 'Spades', 'Hearts', 'Clubs']
     ranks = ['4', '5', '6', '7', 'Queen', 'Jack', 'King', 'Ace', '2', '3']
 
     def __init__(self, suit, rank):
