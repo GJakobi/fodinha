@@ -1,7 +1,7 @@
 import random
 from .card import Card
 
-NUMBER_OF_CARDS = 2
+NUMBER_OF_CARDS = 3
 
 class Deck:
     def __init__(self):

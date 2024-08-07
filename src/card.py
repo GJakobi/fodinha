@@ -10,11 +10,10 @@ class Card:
         return f"{self.rank} of {self.suit}"
 
     def __lt__(self, other):
-        return self.ranks.index(self.rank) < self.ranks.index(other.rank)
-
-    def calculate_value(self):
-        value = (self.suits.index(self.suit) + 1) * (self.ranks.index(self.rank) + 1)
-        return value
+        if self.ranks.index(self.rank) != self.ranks.index(other.rank):
+            return self.ranks.index(self.rank) < self.ranks.index(other.rank)
+        else:
+            return self.suits.index(self.suit) < self.suits.index(other.suit)
 
     @classmethod
     def set_gato(cls, virada):

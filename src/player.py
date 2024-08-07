@@ -27,9 +27,11 @@ class Player:
     
     def ask_play(self):
         print(f"Minha mão: {self.show_hand()}")
-        suit = input("Digite o naipe: ")
-        rank = input("Digite a carta: ")
-        card = self.find_card(suit, rank)
+        index = int(input("Digite o índice da carta que deseja jogar: "))
+        if index < 0 or index >= len(self.hand):
+            print("Índice inválido")
+            return self.ask_play()
+        card = self.hand[index]
         if card is None:
             print("Carta não encontrada")
             return self.ask_play()

@@ -3,9 +3,11 @@ from .deck import Deck
 from .card import Card
 from .player import Player
 from .network import setup_socket
-from .utils import get_player_name, get_ports
+from .utils import get_player_name, get_ports, read_config
+import sys
 
-NUM_OF_PLAYERS = 2
+
+NUM_OF_PLAYERS = 4
 BASTAO = "BASTAO"
 
 def upsert_bet(bets, player, bet):
@@ -30,7 +32,7 @@ def deal_cards(players):
     hands = deck.draw_hands(NUM_OF_PLAYERS)
     virada = deck.draw()
     Card.set_gato(virada)
-    
+        
     for i in range(NUM_OF_PLAYERS):
         player = Player(i)
         player.hand = hands[i]
@@ -38,13 +40,14 @@ def deal_cards(players):
     
     return hands, virada
     
-
 def main():    
-    self_port, next_player_port = get_ports()
-    if self_port is None or next_player_port is None:
-        return
+    player_index = int(sys.argv[1])
+    config = read_config()
 
-    host = "localhost"
+    self_port, next_player_port, host = get_ports(config, player_index)
+    if self_port is None or next_player_port is None:
+        sys.exit(1)
+
     sock = setup_socket(self_port, host)
     
     my_player = Player(get_player_name())
@@ -58,14 +61,13 @@ def main():
         print("Sou o dealer")
         hands, virada = deal_cards(players)
         print(f"Virada: {virada}")
-        #TODO: colocar o gato
             
         my_player.receive_hand(hands[0])
         
         print(f"Minha mão: {my_player.show_hand()}")
             
         # enviamos todas as cartas em uma mesma mensagem
-        message = json.dumps({"state": "DEALING" ,"hands":[{"player": player.name, "hand": player.show_hand()} for player in players]})  
+        message = json.dumps({"state": "DEALING" ,"gato": str(virada), "hands":[{"player": player.name, "hand": player.show_hand()} for player in players]})  
         
         sock.sendto(message.encode(), (host, next_player_port))    
       
@@ -88,15 +90,15 @@ def main():
                     sock.sendto(message.encode(), (host, next_player_port))     
                 # se não, distribui as cartas             
                 else:          
-                    players = []    
-                    hands, virada = deal_cards(players)
+                    local_players = []    
+                    hands, virada = deal_cards(local_players)
                     print(f"Virada: {virada}")
                     
-                    my_player.receive_hand(hands[0])
+                    my_player.receive_hand(hands[int(my_player.name)])
                     
                     print(f"Minha mão: {my_player.show_hand()}")
                     
-                    message = json.dumps({"state": "DEALING" ,"hands":[{"player": player.name, "hand": player.show_hand()} for player in players]})
+                    message = json.dumps({"state": "DEALING" ,"gato": str(virada),"hands":[{"player": player.name, "hand": player.show_hand()} for player in local_players]})
                     
                     sock.sendto(message.encode(), (host, next_player_port))
                 continue
@@ -105,10 +107,16 @@ def main():
             if my_player.is_alive() == False:
                 sock.sendto(data, (host, next_player_port))
                 continue
+            
+            
         
             my_hand = next(player_info["hand"] for player_info in pacote["hands"] if player_info["player"] == int(my_player.name))
             my_hand = [Card.from_string(card_str) for card_str in my_hand]
             my_player.receive_hand(my_hand)
+            
+            gato = pacote["gato"]
+            Card.set_gato(Card.from_string(gato))
+            print(f"Virada: {gato}")
             
             print(f"Minha mão: {my_player.show_hand()}")
             sock.sendto(data, (host, next_player_port))
@@ -147,7 +155,6 @@ def main():
                 return
 
             print("Apostas dos jogadores:")
-            #TODO: mostrar bonitinho
             print(bets)
             if has_bastao == True:
                 message = json.dumps({"state": "PLAYING", "cards": []})
@@ -178,10 +185,8 @@ def main():
                     player = card_info["player"]
                     card = Card.from_string(card_info["card"])
                     all_cards.append((player, card))
-                    
-                all_cards.sort(key=lambda x: x[1].calculate_value())
-                                
-                player_won = all_cards[-1][0]      
+                                                    
+                player_won, _ = max(all_cards, key=lambda x: x[1])
                 
                 #increment number of wins of the player that won the round
                 for card_info in cards_played:
