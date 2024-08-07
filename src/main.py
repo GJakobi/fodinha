@@ -108,8 +108,6 @@ def main():
                 sock.sendto(data, (next_player_host, next_player_port))
                 continue
             
-            
-        
             my_hand = next(player_info["hand"] for player_info in pacote["hands"] if player_info["player"] == int(my_player.name))
             my_hand = [Card.from_string(card_str) for card_str in my_hand]
             my_player.receive_hand(my_hand)
