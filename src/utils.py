@@ -7,8 +7,9 @@ def get_ports(config, index):
         return None, None
     self_port, host = config[index]
     next_index = (index + 1) % len(config)
-    next_player_port, _ = config[next_index]
-    return self_port, next_player_port, host
+    
+    next_player_port, next_player_host = config[next_index]
+    return self_port, next_player_port, host, next_player_host
 
 def get_player_name():
     if len(sys.argv) < 2:
